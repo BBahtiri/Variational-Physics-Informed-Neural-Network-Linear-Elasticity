@@ -1,7 +1,7 @@
 # Variational Physics-Informed Neural Network (VPINN) for 2D Linear Elasticity
 
 ## Overview
-This implementation solves plane strain linear elasticity problems using VPINNs, following the methodology from [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition](https://arxiv.org/abs/2104.13865). The specific problem solved is a **square plate under uniaxial tension** with mixed boundary conditions.
+This implementation solves plane strain linear elasticity problems using VPINNs, following the methodology from [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition](https://www.sciencedirect.com/science/article/pii/S0045782520307325?casa_token=ADrMPLvUAQsAAAAA:4zo2-HImi9vVf2RTt-vpI0LAf6fVTAhbDoRKZEnrLdOm1GKWw2nwa_SsjirCUCe2X02qmYVK). The specific problem solved is a **square plate under uniaxial tension** with mixed boundary conditions.
 
 ## Problem Description
 - **Domain**: Unit square [0,1]×[0,1]
