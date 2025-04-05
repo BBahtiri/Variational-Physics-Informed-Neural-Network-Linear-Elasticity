@@ -70,4 +70,4 @@ This implementation solves plane strain linear elasticity problems using VPINNs,
    - `stress_comparison.png` - Validation against analytical solution
 
 ## References
-- Kharazmi, E., Zhang, Z., & Karniadakis, G. E. (2021). [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition](https://arxiv.org/abs/2104.13865)
+- Kharazmi, E., Zhang, Z., & Karniadakis, G. E. (2021). [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition]([https://arxiv.org/abs/2104.13865](https://www.sciencedirect.com/science/article/abs/pii/S0045782520307325?casa_token=ADrMPLvUAQsAAAAA:4zo2-HImi9vVf2RTt-vpI0LAf6fVTAhbDoRKZEnrLdOm1GKWw2nwa_SsjirCUCe2X02qmYVK))
