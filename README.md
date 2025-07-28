@@ -1,73 +1,83 @@
-# Variational Physics-Informed Neural Network (VPINN) for 2D Linear Elasticity
+# Variational Physics-Informed Neural Network (VPINN) for 2D Elasticity
 
-## Overview
-This implementation solves plane strain linear elasticity problems using VPINNs, following the methodology from [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition](https://www.sciencedirect.com/science/article/pii/S0045782520307325?casa_token=ADrMPLvUAQsAAAAA:4zo2-HImi9vVf2RTt-vpI0LAf6fVTAhbDoRKZEnrLdOm1GKWw2nwa_SsjirCUCe2X02qmYVK). The specific problem solved is a **square plate under uniaxial tension** with mixed boundary conditions.
+## 1. Overview
 
-## Problem Description
-- **Domain**: Unit square [0,1]×[0,1]
-- **Boundary Conditions**:
-  - Left edge (x=0): Fixed in x-direction (u=0)
-  - Bottom edge (y=0): Fixed in y-direction (v=0)
-  - Right edge (x=1): Prescribed displacement in x-direction (u=0.1)
-  - Top edge (y=1): Free surface (natural boundary condition)
-- **Material Properties**:
-  - Young's modulus (E): 1.0 GPa
-  - Poisson's ratio (ν): 0.3
+This project implements a **Variational Physics-Informed Neural Network (VPINN)** to solve a 2D linear elasticity problem. The specific case is a **square plate under uniaxial tension**, modeled using **plane stress** assumptions.
 
-## Key Features
-1. **VPINN Architecture**:
-   - Separate neural networks for x (u) and y (v) displacements
-   - Custom boundary-aware architecture with:
-     - Distance functions for boundary condition enforcement
-     - Adaptive activation functions
-   - Two-stage optimization (Adam + L-BFGS)
+The methodology is inspired by the *hp-VPINNs* paper by Kharazmi et al., which leverages the calculus of variations to formulate the loss function. The network is trained to minimize the residual of the weak form of the governing PDE.
 
-2. **Weak Form Implementation**:
-   - Legendre polynomial-based test functions
-   - Gauss-Legendre quadrature integration
-   - Automatic differentiation for strain/stress calculations
-   - Plane strain constitutive relations
+- **Reference**: Kharazmi, E., Zhang, Z., & Karniadakis, G. E. (2021). [*hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition*](https://www.sciencedirect.com/science/article/pii/S0045782520307325).
 
-3. **Core Implementation**:
-   ```python
-   # Plane strain constitutive relationship
-   σ = E/(1-ν²) * [ε_xx + νε_yy, νε_xx + ε_yy, (1-ν)/2 ε_xy]
-   
-   # Loss function components
-   Loss = ∫(σ:ε(ν))dΩ + α(‖u_boundary‖² + ‖v_boundary‖²)
-   ```
-   - Mixed-variational formulation
-   - Jacobian-aware coordinate transformations
-   - Gradient clipping and learning rate scheduling
+## 2. Problem Formulation
 
-4. **Postprocessing**:
-   - Full field displacement/stress/strain visualization
-   - Error analysis against analytical solutions
-   - Result export in NPZ and text formats
+### Domain & Boundary Conditions
+- **Domain**: A unit square plate, $\Omega = [0,1] \times [0,1]$.
+- **Boundary Conditions (BCs)**:
+  - **Left Edge** ($x=0$): Fixed horizontally, $u=0$.
+  - **Bottom Edge** ($y=0$): Fixed vertically, $v=0$.
+  - **Right Edge** ($x=1$): Prescribed horizontal displacement, $u=0.1$.
+  - **Top Edge** ($y=1$): Free (Neumann BC).
 
-## Typical Outputs
-- Displacement fields (u, v)
-- Strain components (ε_xx, ε_yy, ε_xy)
-- Stress components (σ_xx, σ_yy, σ_xy)
-- Error metrics vs analytical solution
-- Point-wise comparison files
+### Physical Model
+The system is governed by the equilibrium equation (assuming no body forces):
+$$\nabla \cdot \boldsymbol{\sigma} = \mathbf{0} \quad \text{in } \Omega$$
+The model assumes a linear elastic, isotropic material under **plane stress** conditions. The stress-strain relationship is given by Hooke's Law.
 
-## Getting Started
-1. Install requirements:
-   ```bash
-   pip install torch matplotlib scipy numpy
-   ```
+## 3. VPINN Methodology
 
-2. Run main simulation:
-   ```bash
-   python main.py
-   ```
+### Variational (Weak) Form
+Instead of minimizing the strong form residual ($|\nabla \cdot \boldsymbol{\sigma}|^2$), the VPINN minimizes the energy functional described by the weak form. The loss function is derived from the principle of virtual work:
+```math
+\mathcal{L}_{variational} = \sum_{n} \left( \int_{\Omega} \boldsymbol{\sigma}(\mathbf{u}_{NN}) : \boldsymbol{\epsilon}(\mathbf{v}_n) \,d\Omega \right)^2
+```
+where $\mathbf{u}_{NN}$ is the displacement field predicted by the neural network and $\mathbf{v}_n$ are vector test functions.
 
-3. Key outputs:
-   - `deformation_plots.png` - Displacement visualizations
-   - `stress_strain_plots.png` - Stress/strain distributions
-   - `vpinn_results.npz` - Numerical results in binary format
-   - `stress_comparison.png` - Validation against analytical solution
+### Implementation Details
+- **Test Functions**: The test functions $\mathbf{v}_n$ are constructed from Legendre polynomials of the form
+```math
+\psi_k(t)=P_{k+1}(t)-P_{k-1}(t)$
+```
+, which are well-suited for variational methods.
+- **Numerical Integration**: The integral in the weak form is approximated numerically using **Gauss-Legendre quadrature**.
+- **Coordinate Transformation**: The network operates on the physical domain `[0,1]x[0,1]`, but the Legendre polynomials and quadrature rules are defined on the reference domain `[-1,1]x[-1,1]`. A linear mapping is used, and the change of variables is handled by applying a **Jacobian correction** to the integration weights and spatial derivatives.
 
-## References
-- Kharazmi, E., Zhang, Z., & Karniadakis, G. E. (2021). [hp-VPINNs: Variational Physics-Informed Neural Networks With Domain Decomposition]([https://arxiv.org/abs/2104.13865](https://www.sciencedirect.com/science/article/abs/pii/S0045782520307325?casa_token=ADrMPLvUAQsAAAAA:4zo2-HImi9vVf2RTt-vpI0LAf6fVTAhbDoRKZEnrLdOm1GKWw2nwa_SsjirCUCe2X02qmYVK))
+### Network Architecture & BC Enforcement
+The Dirichlet boundary conditions are enforced analytically using an **Augmented Deep Formulation (ADF)**. The predicted displacement $\mathbf{u}_{NN}$ is not the direct output of the network but is constructed as:
+```math
+\mathbf{u}_{NN}(\mathbf{x}) = \mathbf{g}(\mathbf{x}) + \mathbf{\Phi}(\mathbf{x}) \odot N(\mathbf{x}; \theta)
+```
+- $N(\mathbf{x}; \theta)$: The raw output from the neural network.
+- $\mathbf{g}(\mathbf{x})$: An extension function that satisfies the non-homogeneous BCs. For this problem, $g_u = 0.1 \cdot x^\delta$.
+- $\mathbf{\Phi}(\mathbf{x})$: A distance function that is zero on the Dirichlet boundaries, ensuring the network's output does not alter the imposed conditions. Here, $\Phi_u = x^\alpha (1-x)^\gamma$ and $\Phi_v = y^\beta$.
+
+This structure guarantees that the BCs are met exactly, regardless of the network's weights.
+
+### Training
+- **Loss Function**: The total loss combines the variational loss with an explicit (though architecturally redundant) boundary loss term to guide training: $L_{total} = L_{variational} + w \cdot L_{boundary}$.
+- **Optimization**: A two-stage optimization process is used for robust convergence:
+    1.  **Adam**: For rapid, broad exploration of the loss landscape.
+    2.  **L-BFGS**: For fine-tuning and achieving high-precision results near the minimum.
+
+## 4. Project Structure
+
+- `main.py`: Main script to run the training, evaluation, and plotting.
+- `vpinn.py`: Core VPINN class, handling the variational loss, boundary conditions, and optimizers.
+- `models.py`: Defines the `ElasticityNet` neural network architecture with the ADF for BC enforcement.
+- `config.py`: Contains all hyperparameters, material properties, and training settings.
+- `FE/`: Helper module for generating basis functions and quadrature rules.
+
+## 5. How to Use
+
+1.  **Install dependencies**:
+    ```bash
+    pip install torch matplotlib scipy numpy
+    ```
+2.  **Run the simulation**:
+    ```bash
+    python main.py
+    ```
+3.  **Check the outputs**:
+    - `deformation_plots.png`: Visualization of undeformed vs. deformed mesh and displacement components.
+    - `stress_strain_plots.png`: Contour plots of all stress and strain components.
+    - `strain_comparison.png` & `stress_comparison.png`: Comparison of VPINN results against the analytical solution.
+    - `vpinn_results.npz` & `vpinn_results.txt`: Saved numerical data for all fields at grid points.
